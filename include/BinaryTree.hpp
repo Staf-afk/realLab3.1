@@ -35,7 +35,6 @@ private:
     static void collect(Node<T>* n, Traversal order, std::vector<T>& out);
     static void collectPtrs(Node<T>* n, Traversal order, std::vector<Node<T>*>& out);
 
-    static bool sameShape(Node<T>* a, Node<T>* b);
     static Node<T>* clone(Node<T>* n);
     static bool subtreeEquals(Node<T>* a, Node<T>* b);
 

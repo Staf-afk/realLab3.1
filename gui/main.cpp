@@ -29,14 +29,23 @@
 class TreeNodeItem : public QGraphicsEllipseItem {
 public:
     TreeNodeItem(const QString& text, qreal x, qreal y) {
-        setRect(0, 0, 40, 40);
-        setPos(x - 20, y - 20);
+        const qreal d = 44.0;
+        const qreal r = d / 2.0;
+
+        setRect(0, 0, d, d);
+        setPos(x - r, y - r);
         setBrush(Qt::white);
         setPen(QPen(Qt::black, 2));
 
         auto* textItem = new QGraphicsTextItem(text, this);
+        QFont font = textItem->font();
+        font.setBold(true);
+        font.setPointSize(10);
+        textItem->setFont(font);
+        textItem->setDefaultTextColor(Qt::black);
+
         QRectF bounds = textItem->boundingRect();
-        textItem->setPos(20 - bounds.width()/2, 20 - bounds.height()/2);
+        textItem->setPos(r - bounds.width() / 2.0, r - bounds.height() / 2.0);
     }
 };
 
@@ -46,7 +55,7 @@ class MainWindow : public QMainWindow {
 public:
     MainWindow() {
         setWindowTitle("ЛР-1: Бинарное дерево (Вариант 1)");
-        resize(1000, 700);
+        resize(1100, 750);
 
         auto* centralWidget = new QWidget(this);
         setCentralWidget(centralWidget);
@@ -60,31 +69,65 @@ public:
         inputValue->setPlaceholderText("Например: 5");
         btnInsert = new QPushButton("Вставить значение");
         btnGenerate = new QPushButton("Сгенерировать случайное дерево (20)");
-        
-        formLayout->addRow(new QLabel("<b>Элемент:</b>"), inputValue);
+        btnClear = new QPushButton("Очистить дерево");
+
+        formLayout->addRow(new QLabel("<b>Элемент (вставка):</b>"), inputValue);
         formLayout->addRow(btnInsert);
         formLayout->addRow(btnGenerate);
+        formLayout->addRow(btnClear);
 
+        formLayout->addRow(new QLabel("<hr><b>Обходы:</b>"));
+        
         comboTraversal = new QComboBox();
         comboTraversal->addItems({"KLP", "KPL", "LPK", "LKP", "PLK", "PKL"});
         btnTraverse = new QPushButton("Выполнить обход");
+        btnSerialize = new QPushButton("Сериализовать в строку");
 
-        formLayout->addRow(new QLabel("<b>Тип обхода:</b>"), comboTraversal);
+        formLayout->addRow(new QLabel("Тип обхода:"), comboTraversal);
         formLayout->addRow(btnTraverse);
+        formLayout->addRow(btnSerialize);
 
+        formLayout->addRow(new QLabel("<hr><b>Чтение из строки:</b>"));
+        
+        inputDeserialize = new QLineEdit();
+        inputDeserialize->setPlaceholderText("Числа через пробел (напр. 10 5 15)");
+        btnDeserialize = new QPushButton("Прочитать из строки");
+
+        formLayout->addRow(inputDeserialize);
+        formLayout->addRow(btnDeserialize);
+
+        formLayout->addRow(new QLabel("<hr><b>Поиск по пути:</b>"));
+        
+        inputPath = new QLineEdit();
+        inputPath->setPlaceholderText("Только L и R (напр. LR)");
+        btnFindByPath = new QPushButton("Найти по пути");
+
+        formLayout->addRow(inputPath);
+        formLayout->addRow(btnFindByPath);
+
+        formLayout->addRow(new QLabel("<hr><b>Извлечение поддерева:</b>"));
+        
+        inputExtract = new QLineEdit();
+        inputExtract->setPlaceholderText("Значение узла");
+        btnExtract = new QPushButton("Извлечь поддерево");
+
+        formLayout->addRow(inputExtract);
+        formLayout->addRow(btnExtract);
+
+        formLayout->addRow(new QLabel("<hr><b>Функции:</b>"));
+        
         btnMap = new QPushButton("Map (x * 2)");
         btnWhere = new QPushButton("Where (x > 5)");
-        btnSerialize = new QPushButton("Сериализовать в строку");
         
         formLayout->addRow(btnMap);
         formLayout->addRow(btnWhere);
-        formLayout->addRow(btnSerialize);
 
         controlLayout->addLayout(formLayout);
         controlLayout->addStretch();
 
         textLog = new QTextEdit();
         textLog->setReadOnly(true);
+        textLog->setMinimumHeight(200);
         controlLayout->addWidget(new QLabel("<b>Лог / Результат:</b>"));
         controlLayout->addWidget(textLog);
 
@@ -98,10 +141,14 @@ public:
 
         connect(btnInsert, &QPushButton::clicked, this, &MainWindow::onInsert);
         connect(btnGenerate, &QPushButton::clicked, this, &MainWindow::onGenerate);
+        connect(btnClear, &QPushButton::clicked, this, &MainWindow::onClear);
         connect(btnTraverse, &QPushButton::clicked, this, &MainWindow::onTraverse);
+        connect(btnSerialize, &QPushButton::clicked, this, &MainWindow::onSerialize);
+        connect(btnDeserialize, &QPushButton::clicked, this, &MainWindow::onDeserialize);
+        connect(btnFindByPath, &QPushButton::clicked, this, &MainWindow::onFindByPath);
+        connect(btnExtract, &QPushButton::clicked, this, &MainWindow::onExtractSubtree);
         connect(btnMap, &QPushButton::clicked, this, &MainWindow::onMap);
         connect(btnWhere, &QPushButton::clicked, this, &MainWindow::onWhere);
-        connect(btnSerialize, &QPushButton::clicked, this, &MainWindow::onSerialize);
     }
 
 private slots:
@@ -127,6 +174,12 @@ private slots:
         redrawTree();
     }
 
+    void onClear() {
+        tree.clear(); 
+        log("Дерево очищено.");
+        redrawTree();  
+    }
+
     void onTraverse() {
         QString type = comboTraversal->currentText();
         try {
@@ -137,6 +190,60 @@ private slots:
             log(QString("Обход %1:\n%2").arg(type, list.join(", ")));
         } catch (const std::exception& e) {
             log(QString("Ошибка обхода: %1").arg(e.what()));
+        }
+    }
+
+    void onSerialize() {
+        try {
+            QString type = comboTraversal->currentText();
+            Traversal t = traversalFromString(type.toStdString());
+            std::string s = tree.serialize(t);
+            log(QString("Сериализация (%1):\n%2").arg(type, QString::fromStdString(s)));
+        } catch (const std::exception& e) {
+            log(QString("Ошибка Сериализации: %1").arg(e.what()));
+        }
+    }
+
+    void onDeserialize() {
+        try {
+            QString type = comboTraversal->currentText();
+            Traversal t = traversalFromString(type.toStdString());
+            std::string s = inputDeserialize->text().toStdString();
+            if (s.empty()) {
+                log("Ошибка: строка пуста.");
+                return;
+            }
+            tree = BinaryTree<int>::deserialize(s, t);
+            log(QString("Дерево прочитано из строки (обход %1).").arg(type));
+            redrawTree();
+        } catch (const std::exception& e) {
+            log(QString("Ошибка чтения из строки: %1").arg(e.what()));
+        }
+    }
+
+    void onFindByPath() {
+        try {
+            QString path = inputPath->text();
+            const int& val = tree.findByPath(path.toStdString());
+            log(QString("Поиск по пути '%1': найдено значение %2").arg(path).arg(val));
+        } catch (const std::exception& e) {
+            log(QString("Ошибка поиска по пути: %1").arg(e.what()));
+        }
+    }
+
+    void onExtractSubtree() {
+        bool ok;
+        int target = inputExtract->text().toInt(&ok);
+        if (!ok) {
+            QMessageBox::warning(this, "Ошибка", "Введите целое число!");
+            return;
+        }
+        try {
+            tree = tree.extractSubtree(target);
+            log(QString("Извлечено поддерево с корнем %1. Текущее дерево заменено.").arg(target));
+            redrawTree();
+        } catch (const std::exception& e) {
+            log(QString("Ошибка извлечения поддерева: %1").arg(e.what()));
         }
     }
 
@@ -162,28 +269,26 @@ private slots:
         }
     }
 
-    void onSerialize() {
-        try {
-            QString type = comboTraversal->currentText();
-            Traversal t = traversalFromString(type.toStdString());
-            std::string s = tree.serialize(t);
-            log(QString("Сериализация (%1):\n%2").arg(type, QString::fromStdString(s)));
-        } catch (const std::exception& e) {
-            log(QString("Ошибка Сериализации: %1").arg(e.what()));
-        }
-    }
-
 private:
     BinaryTree<int> tree;
 
     QLineEdit* inputValue;
+    QLineEdit* inputDeserialize;
+    QLineEdit* inputPath;
+    QLineEdit* inputExtract;
+
     QPushButton* btnInsert;
     QPushButton* btnGenerate;
-    QComboBox* comboTraversal;
+    QPushButton* btnClear;
     QPushButton* btnTraverse;
+    QPushButton* btnSerialize;
+    QPushButton* btnDeserialize;
+    QPushButton* btnFindByPath;
+    QPushButton* btnExtract;
     QPushButton* btnMap;
     QPushButton* btnWhere;
-    QPushButton* btnSerialize;
+    
+    QComboBox* comboTraversal;
     QTextEdit* textLog;
     QGraphicsScene* scene;
     QGraphicsView* view;
@@ -231,16 +336,11 @@ private:
 };
 
 int main(int argc, char *argv[]) {
-QApplication app(argc, argv);
-
-app.setStyle("Fusion");
-
-MainWindow window;
-window.show();
-
-return app.exec();
+    QApplication app(argc, argv);
+    app.setStyle("Fusion");
+    MainWindow window;
+    window.show();
+    return app.exec();
 }
 
-
 #include "main.moc"
-

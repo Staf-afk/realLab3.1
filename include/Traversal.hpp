@@ -4,7 +4,7 @@
 #include <array>
 
 enum class Traversal {
-    KLP, 
+    KLP,  
     KPL,
     LPK, 
     LKP,

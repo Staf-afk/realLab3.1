@@ -37,6 +37,9 @@ void BinaryTree<T>::insertNode(const T& value) {
     }
     Node<T>* current = root_;
     while (true) {
+       /*if (value == current->value) {
+            return;      на случай важных переговоров о поисковом дереве без дубликатов
+        }*/ 
         if (value < current->value) {
             if (!current->left) {
                 current->left = new Node<T>(value);
