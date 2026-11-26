@@ -60,6 +60,27 @@ void BinaryTree<T>::insertNode(const T& value) {
 
 template <typename T>
 void BinaryTree<T>::destroy(Node<T>* n) noexcept {
+
+    /* 
+    if(n!) return;
+    std::stack<Node<T>*> s;
+    s.push(n);
+    Node<T>* lastVisited = nullptr;
+    
+    while (!s.empty()) {
+        Node<T>* current = s.top();
+        if (current->left && lastVisited != current->left && lastVisited != current->right) {
+            s.push(current->left);
+        } else if (current->right && lastVisited != current->right) {
+            s.push(current->right);
+        } else {
+            s.pop();
+            delete current;
+            lastVisited = current;
+        }
+    }
+    return;
+    */
     if (!n) return;
     destroy(n->left);
     destroy(n->right);
@@ -69,6 +90,28 @@ void BinaryTree<T>::destroy(Node<T>* n) noexcept {
 template <typename T>
 Node<T>* BinaryTree<T>::clone(Node<T>* n) {
     if (!n) return nullptr;
+
+    /*
+    if(!n) return nullptr;
+    Node<T>* newRoot = new Node<T>(n->value);
+    std::stack<std::pair<Node<T>*, Node<T>*>> s;
+    s.push({n, newRoot});
+    
+    while (!s.empty()) {
+        auto [oldNode, newNode] = s.top();
+        s.pop();
+        
+        if (oldNode->left) {
+            newNode->left = new Node<T>(oldNode->left->value);
+            s.push({oldNode->left, newNode->left});
+        }
+        if (oldNode->right) {
+            newNode->right = new Node<T>(oldNode->right->value);
+            s.push({oldNode->right, newNode->right});
+        }
+    }
+    return newRoot;
+    */*/
     Node<T>* copy = new Node<T>(n->value);
     copy->left  = clone(n->left);
     copy->right = clone(n->right);
@@ -131,6 +174,26 @@ void BinaryTree<T>::setRight(const T& value) {
 }
 template <typename T>
 void BinaryTree<T>::collect(Node<T>* n, Traversal order, std::vector<T>& out) {
+    
+     /*
+    if (!n) return;
+    if (order == Traversal::LKP) {        //тут чисто для LKP ибо попроще, ост копипастятся с неприятными допами
+        std::stack<Node<T>*> s;
+        Node<T>* curr = n;
+        while (curr != nullptr || !s.empty()) {
+            while (curr != nullptr) {
+                s.push(curr);
+                curr = curr->left;
+            }
+            curr = s.top();
+            s.pop();
+            out.push_back(curr->value);
+            curr = curr->right;
+        }
+        return;
+    }
+    */
+
     if (!n) return;
     const auto ord = traversalOrder(order);
     switch (order) {
